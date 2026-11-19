@@ -25,8 +25,18 @@ public class SqliteTaskRepository implements TaskRepository {
 
     @Override
     public void init() {
-        connection = db.openConnection();
-        db.ensureSchema(connection);
+        Connection c = db.openConnection();
+        try {
+            db.ensureSchema(c);
+        } catch (RuntimeException e) {
+            try {
+                c.close();
+            } catch (SQLException ignored) {
+                // best effort: do not leak the file handle
+            }
+            throw e;
+        }
+        connection = c;
     }
 
     private Connection conn() {
