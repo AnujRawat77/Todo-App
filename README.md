@@ -4,6 +4,16 @@ A console-based Todo application written in Java. Tasks have a priority
 (HIGH / MEDIUM / LOW), can be filtered, and are saved to a local SQLite
 database so they survive restarts.
 
+## Quick start
+Console-based Java Todo app with task priorities (LOW/MEDIUM/HIGH, case-insensitive, default MEDIUM), filtering by priority and status, and SQLite persistence (`./todo.db`).
+
+```bash
+./build.sh   # compile, run tests, package target/todo-app-1.0.0.jar
+./run.sh     # run the app (builds first if the JAR is missing)
+```
+
+Tests use JUnit 5 (62 tests, run with `mvn test` or as part of `./build.sh`).
+
 ## Features
 - Add a task with a priority (HIGH, MEDIUM, LOW; case-insensitive; press Enter for the default MEDIUM; invalid input re-prompts)
 - View tasks: All, Pending only, Completed only, or By priority (with an empty-state message when nothing matches)
