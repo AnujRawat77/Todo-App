@@ -69,7 +69,7 @@ CREATE TABLE IF NOT EXISTS tasks (
 
 ## How to build
 
-This repo currently builds with Maven (no\`build.sh` script is present on `main`).
+Build with Maven:
 
 ```bash
 mvn -q clean package
@@ -81,6 +81,8 @@ The executable fat JAR is produced at:
 target/todo-app-1.0.0.jar
 ```
 
+> Note: there is no `build.sh`"€¾ `run.sh` on `main` at this time.
+
 ---
 
 ## How to run
@@ -88,7 +90,7 @@ target/todo-app-1.0.0.jar
 Run the fat JAR:
 
 ```bash
-ava -jar target/todo-app-1.0.0.jar
+java -jar target/todo-app-1.0.0.jar
 ```
 
 Alternatively, run via Maven exec:
@@ -107,7 +109,8 @@ mvn -q test
 
 Notes:
  - Unit tests cover priority parsing/defaulting and filtering logic.
- - Integration tests (`SqliteTaskRepositoryIT.java) use a temporary SQLite file to verify CRUD, persistence across reload, and failure paths.
+ - Integration tests (`SliteTaskRepositoryIT.java`) use a temporary SQLite file to verify CRUD, persistence across reload, and failure paths.
+
 
 ---
 
@@ -117,8 +120,8 @@ Notes:
 
 After you select `Add Task`, you'll be prompted for priority:
 
-- Valid: `HIGH`, `MEDIUM`, `LOW` (any case)
-- Blank (just press Enter): defaults to `MEDIUM'
+- Valid: `HIGH , `MEDIUM`, `LOW` (any case)
+- Blank (just press Enter): defaults to `MEDIUM`
 
 ### Filtering
 
@@ -129,4 +132,4 @@ When you select `View Tasks`, you can choose:
 - Completed only
 - By Priority (prompts for HIGH/MEDIUM/LOW)
 
-When no tasks match the selected filter, the app prints an empty-state message (eg. `No pending tasks.`).
+When no tasks match the selected filter, the app prints an empty-state message (e.g. `No tasks matched your filter.`).
