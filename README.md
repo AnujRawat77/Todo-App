@@ -1,30 +1,57 @@
 # Java Todo Application (Priority + SQLite)
 
-A console-based Todo application written in Java. Tasks have a priority
-(HIGH / MEDIUM / LOW), can be filtered, and are saved to a local SQLite
-database so they survive restarts.
+A console-based Todo application written in Java. Tasks have a priority (HIGH / MEDIUM / LOW), can be filtered, and are saved to a local SQLite database so they survive restarts.
+
+---
 
 ## Features
-- Add a task with a priority (HIGH, MEDIUM, LOW; case-insensitive; press Enter for the default MEDIUM; invalid input re-prompts)
-- View tasks: All, Pending only, Completed only, or By priority (with an empty-state message when nothing matches)
-- Mark a task as completed
+
+- Add tasks with priority (`HIGH`, `MEDIUM`, `LOW`)
+  - priority input is case-insensitive
+  - press Enter for the default `PRIORITY = MEDIUM`
+  - invalid priority re-prompts
+- View tasks with filters: All, Pending, Completed, by Priority
+  - shows an empty-state message when nothing matches
+- Mark a task as completed (by ID)
 - Delete a task (with Y/N confirmation)
-- Automatic persistence to SQLite after every action
-- Graceful error handling: clear message and clean exit if the database cannot be opened, friendly messages for failed DB operations and for IDs that do not exist
+- SQLite persistence (auto-creates schema, persists after every action)
+- Friendly error handling for missing IDs and DB failures
+
+---
 
 ## Requirements
+
 - JDK 11 or later
-- Maven 3.6+ (dependencies: `sqlite-jdbc`, JUnit 5 for tests)
+- Maven 3.6+
 
-## Database location
-By default the database file is `./todo.db` in the directory you run the app from.
-It is created automatically (schema included) on first start. Override it with, in order of precedence:
+---
 
-1. First command-line argument: `java -jar target/todo-app-1.0.0.jar /path/to/my.db`
-2. JVM property: `-Dtodo.db=/path/to/my.db`
-3. Environment variable: `TODO_DB_PATH=/path/to/my.db`
+## Database location & configuration
 
-Schema:
+By default, the SQLite database file is created in the current working directory as a relative path:
+
+```text
+./todo.db
+```
+
+The database path is resolved in this order of precedence (as implemented in `com.todo.Main.resolveDbPath`):
+
+1. First command-line argument:
+   ```bash
+   java -jar target/todo-app-1.0.0.jar /path/to/my.db
+   ```
+2. JVM system property:
+   ```bash
+   java -Dtodo.db=/path/to/my.db -jar target/todo-app-1.0.0.jar
+   ```
+3. Environment variable:
+  ```bash
+  export TODO_DB_PATH=/path/to/my.db
+  java -jar target/todo-app-1.0.0.jar
+  ```
+4. Default: `./todo.db`
+
+Default schema:
 
 ```sql
 CREATE TABLE IF NOT EXISTS tasks (
@@ -38,47 +65,68 @@ CREATE TABLE IF NOT EXISTS tasks (
 );
 ```
 
-Database errors are reported on the console in friendly form; technical details (no stack traces) are written to stderr.
+---
 
-## Project structure
+## How to build
+
+This repo currently builds with Maven (no\`build.sh` script is present on `main`).
+
+```bash
+mvn -q clean package
+```
+
+The executable fat JAR is produced at:
 
 ```text
-Todo-App/
-├── pom.xml
-├── src/
-│   ├── main/java/com/todo/
-│   │   ├── Main.java
-│   │   ├── model/        Todo, Priority
-│   │   ├── persistence/  Database, TaskRepository, SqliteTaskRepository, PersistenceException
-│   │   ├── service/      TaskService, TaskFilter
-│   │   ├── ui/           ConsoleApp
-│   │   └── util/         InputUtil
-│   └── test/java/com/todo/
-│       ├── PriorityParsingTest.java
-│       ├── TaskFilteringTest.java
-│       └── SqliteTaskRepositoryIT.java
-└── README.md
+target/todo-app-1.0.0.jar
 ```
 
-## How to build and run
+---
+
+## How to run
+
+Run the fat JAR:
 
 ```bash
-mvn package
-java -jar target/todo-app-1.0.0.jar
+ava -jar target/todo-app-1.0.0.jar
 ```
 
-Or run directly from compiled classes with Maven:
+Alternatively, run via Maven exec:
 
 ```bash
-mvn compile exec:java -Dexec.mainClass=com.todo.Main
+mvn -q compile exec:java -Dexec.mainClass=com.todo.Main
 ```
 
-## How to run the tests
+---
+
+## How to test
 
 ```bash
-mvn test
+mvn -q test
 ```
 
-Unit tests cover priority parsing/defaulting and filtering; integration tests
-(`SqliteTaskRepositoryIT`) use a temporary SQLite file to verify CRUD, reload
-persistence and failure paths.
+Notes:
+ - Unit tests cover priority parsing/defaulting and filtering logic.
+ - Integration tests (`SqliteTaskRepositoryIT.java) use a temporary SQLite file to verify CRUD, persistence across reload, and failure paths.
+
+---
+
+## Usage (new features)
+
+### Priority
+
+After you select `Add Task`, you'll be prompted for priority:
+
+- Valid: `HIGH`, `MEDIUM`, `LOW` (any case)
+- Blank (just press Enter): defaults to `MEDIUM'
+
+### Filtering
+
+When you select `View Tasks`, you can choose:
+
+- All tasks
+- Pending only
+- Completed only
+- By Priority (prompts for HIGH/MEDIUM/LOW)
+
+When no tasks match the selected filter, the app prints an empty-state message (eg. `No pending tasks.`).
