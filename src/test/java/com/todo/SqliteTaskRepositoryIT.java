@@ -26,17 +26,19 @@ class SqliteTaskRepositoryIT {
 
     private String dbPath;
     private TaskRepository repo;
+    private TaskService service;
 
     @BeforeEach
     void setUp() {
         dbPath = tempDir.resolve("test.db").toString();
         repo = new SqliteTaskRepository(new Database(dbPath));
-        repo.init();
+        service = new TaskService(repo);
+        service.initialize();
     }
 
     @AfterEach
     void tearDown() {
-        repo.close();
+        service.shutdown();
     }
 
     @Test
@@ -88,7 +90,8 @@ class SqliteTaskRepositoryIT {
         repo.close();
 
         repo = new SqliteTaskRepository(new Database(dbPath));
-        repo.init();
+        service = new TaskService(repo);
+        service.initialize();
         List<Todo> all = repo.findAll();
         assertEquals(2, all.size());
         assertEquals(a.getId(), all.get(0).getId());
@@ -106,7 +109,6 @@ class SqliteTaskRepositoryIT {
 
     @Test
     void serviceFiltersPersistedTasksAndValidatesIds() {
-        TaskService service = new TaskService(repo);
         service.addTask("  trimmed  ", null);
         Todo high = service.addTask("urgent", Priority.HIGH);
         assertEquals(Priority.MEDIUM, service.listByPriority(Priority.MEDIUM).get(0).getPriority());
@@ -142,5 +144,28 @@ class SqliteTaskRepositoryIT {
         assertThrows(PersistenceException.class, () -> repo.create("x", Priority.LOW));
         assertThrows(PersistenceException.class, () -> repo.deleteById(1));
         assertThrows(PersistenceException.class, () -> repo.updateCompleted(1, true));
+    }
+
+    @Test
+    void closeIsIdempotentAndDoesNotThrow() {
+        repo.close();
+        repo.close();
+    }
+
+    @Test
+    void unknownPriorityInDatabaseMapsToMedium() throws Exception {
+        repo.create("x", Priority.LOW);
+        repo.close();
+        try (java.sql.Connection c = java.sql.DriverManager.getConnection("jdbc:sqlite:" + dbPath);
+             java.sql.Statement st = c.createStatement()) {
+            st.execute("DROP INDEX idx_tasks_priority");
+            st.execute("ALTER TABLE tasks RENAME TO old_tasks");
+            st.execute("CREATE TABLE tasks (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, "
+                    + "completed INTEGER NOT NULL DEFAULT 0, priority TEXT NOT NULL DEFAULT 'MEDIUM', "
+                    + "created_at TEXT)");
+            st.execute("INSERT INTO tasks (title, completed, priority) VALUES ('bad', 0, 'URGENT')");
+        }
+        service.initialize();
+        assertEquals(Priority.MEDIUM, repo.findAll().get(0).getPriority());
     }
 }

@@ -12,7 +12,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-/** JDBC implementation using a single connection per run. */
+/**
+ * JDBC implementation using a single long-lived connection per run.
+ * The connection is validated before each operation and transparently reopened
+ * if it has been dropped. After {@link #close()} the repository must be re-initialized.
+ */
 public class SqliteTaskRepository implements TaskRepository {
     private static final String SELECT_COLUMNS = "SELECT id, title, completed, priority FROM tasks";
 
@@ -33,7 +37,23 @@ public class SqliteTaskRepository implements TaskRepository {
         if (connection == null) {
             throw new PersistenceException("Repository is not initialized.");
         }
+        try {
+            if (!connection.isValid(2)) {
+                quietlyClose(connection);
+                connection = db.openConnection();
+            }
+        } catch (SQLException e) {
+            throw new PersistenceException("Could not validate database connection: " + e.getMessage(), e);
+        }
         return connection;
+    }
+
+    private static void quietlyClose(Connection c) {
+        try {
+            c.close();
+        } catch (SQLException e) {
+            System.err.println("Warning: could not close database connection: " + e.getMessage());
+        }
     }
 
     @Override
@@ -103,21 +123,27 @@ public class SqliteTaskRepository implements TaskRepository {
         }
     }
 
+    /** Closes the connection; failures are logged and suppressed so shutdown never throws. */
     @Override
     public void close() {
         if (connection != null) {
-            try {
-                connection.close();
-            } catch (SQLException e) {
-                throw new PersistenceException("Could not close database: " + e.getMessage(), e);
-            } finally {
-                connection = null;
-            }
+            Connection c = connection;
+            connection = null;
+            quietlyClose(c);
         }
     }
 
     private Todo mapRow(ResultSet rs) throws SQLException {
-        return new Todo(rs.getInt("id"), rs.getString("title"),
-                rs.getInt("completed") == 1, Priority.valueOf(rs.getString("priority")));
+        int id = rs.getInt("id");
+        String raw = rs.getString("priority");
+        Priority priority;
+        try {
+            priority = Priority.valueOf(raw == null ? "" : raw.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            System.err.println("Warning: task " + id + " has unknown priority '" + raw
+                    + "'; treating as MEDIUM.");
+            priority = Priority.MEDIUM;
+        }
+        return new Todo(id, rs.getString("title"), rs.getInt("completed") == 1, priority);
     }
 }
